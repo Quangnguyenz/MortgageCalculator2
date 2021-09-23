@@ -18,6 +18,7 @@ let totalLoan,
     monthlyPropertyTaxes,
     MonthlyHomeInsurance,
     monthlyHOA,
+    monthlyTotal,
     labels = ["Princial & Interest", "Property Tax", "Home Insurance", "HOA"],
     backgroundColor = [
         "rgba(255, 99, 132, 1)",
@@ -70,26 +71,91 @@ myChart.options.animation = false;
 // add event listener to input
 let i;
 let inputTexts = document.getElementsByClassName('form-group__textInput');
-for (let i=0; i < inputTexts.length; i++){
+for (i = 0; i < inputTexts.length; i++) {
     inputTexts[i].addEventListener("input", updateInputState);
 }
 
-function updateInputState(event){
-    let name = event.target.name;
-    let value = event.target.value
-    
-    if (name == "price"){
-        value = getNumber(value);
-        state = {
-            ...state,
-            [name]: value
-        }
-        console.log(state)
-    }
-
-
+let inputSlides = document.getElementsByClassName('form-group__range-slide');
+for (i = 0; i < inputSlides.length; i++) {
+    inputSlides[i].addEventListener("input", updateInputState);
 }
 
-// console.log(inputTexts)
+// Update the form when there is a change in the input
+function updateInputState(event) {
+    let name = event.target.name;
+    let value = event.target.value
 
-// console.log(state)
+    if (name == "price") {
+        value = getNumber(value);
+    }
+
+    if (event.target.type == 'range') {
+        let total = document.getElementsByClassName(`total__${name}`)[0].innerHTML = `${value}`
+    }
+
+    state = {
+        ...state,
+        [name]: value
+    }
+    calculateData();
+}
+
+document.getElementsByTagName('form')[0].addEventListener('submit', (event) => {
+    event.preventDefault();
+    document.getElementsByClassName('mg-page__right')[0].classList.add('mg-page__right--animate')
+    calculateData();
+})
+
+function calculateData() {
+    totalLoan = state.price - (state.price * (state.down_payment / 100))
+    totalMonths = state.loan_years * 12;
+    monthlyInterest = (state.interest_rate / 100) / 12;
+    monthlyPrincipalInterest = (
+        totalLoan *
+        ((monthlyInterest * ((1 + monthlyInterest) ** totalMonths)) /
+            ((1 + monthlyInterest) ** totalMonths - 1)
+        )).toFixed(2);
+
+    monthlyPropertyTaxes = (
+        (state.price * (state.property_tax / 100)) /
+        12
+    ).toFixed(2)
+
+    monthlyHomeInsurance = state.home_insurance / 12;
+
+    monthlyHOA = state.hoa / 12
+
+    monthlyTotal = (parseFloat(monthlyPrincipalInterest) +
+        parseFloat(monthlyPropertyTaxes) + parseFloat(monthlyHomeInsurance) + parseFloat(monthlyHOA)).toFixed(2);
+
+    document.getElementsByClassName('info__numbers--principal')[0].innerHTML = `$${monthlyPrincipalInterest}`
+
+    document.getElementsByClassName('info__numbers--property_taxes')[0].innerHTML = `$${monthlyPropertyTaxes}`
+
+    document.getElementsByClassName('info__numbers--home_insurance')[0].innerHTML = `$${monthlyHomeInsurance}`
+
+    document.getElementsByClassName('info__numbers--hoa')[0].innerHTML = `$${monthlyHOA}`
+
+    document.getElementsByClassName('info__numbers--total')[0].innerHTML = `$${monthlyTotal}`
+
+    updateChart(myChart, labels, backgroundColor);
+}
+
+function updateChart(chart, labels, color){
+    chart.data.datasets.pop();
+    chart.data.datasets.push({
+        label: labels,
+        backgroundColor: color,
+        data: [
+            monthlyPrincipalInterest,
+            monthlyPropertyTaxes,
+            monthlyHomeInsurance,
+            monthlyHOA
+        ]
+    });
+
+    chart.options.transitions.active.animation.duration = 0;
+    chart.update();
+}
+
+calculateData();
